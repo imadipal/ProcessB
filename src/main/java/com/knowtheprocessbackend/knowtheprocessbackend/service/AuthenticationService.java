@@ -6,6 +6,8 @@ import com.knowtheprocessbackend.knowtheprocessbackend.repository.QuestionReposi
 import com.knowtheprocessbackend.knowtheprocessbackend.repository.UserQuestionRepository;
 import com.knowtheprocessbackend.knowtheprocessbackend.repository.UserRepository;
 import com.knowtheprocessbackend.knowtheprocessbackend.security.JwtUtil;
+import jakarta.servlet.http.Cookie;
+import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.http.ResponseEntity;
@@ -55,14 +57,34 @@ public class AuthenticationService implements UserDetailsService {
         return ResponseEntity.ok("User registered successfully!");
     }
 
-    // User login and JWT generation
-    public ResponseEntity<?> login(User user) {
+    // Inside your login method
+    public ResponseEntity<?> login(User user, HttpServletResponse response) {
         User foundUser = userRepository.findByUsername(user.getUsername());
         if (foundUser != null && passwordEncoder.matches(user.getPassword(), foundUser.getPassword())) {
             String token = jwtUtil.generateToken(foundUser.getUsername());
-            return ResponseEntity.ok(token);
+
+            // Create a cookie with the JWT token
+            Cookie cookie = new Cookie("token", token);
+            cookie.setHttpOnly(true); // Prevent JavaScript access to the cookie
+            cookie.setSecure(true); // Only send cookie over HTTPS
+            cookie.setPath("/"); // Set cookie path
+            cookie.setMaxAge(86400); // Set cookie expiration time (1 day)
+
+            // Add the cookie to the response
+            response.addCookie(cookie);
+            return ResponseEntity.ok("User logged in successfully!");
         }
         return ResponseEntity.status(401).body("Invalid credentials");
+    }
+
+    public ResponseEntity<?> logout(HttpServletResponse response) {
+        Cookie cookie = new Cookie("token", null);
+        cookie.setHttpOnly(true);
+        cookie.setSecure(true);
+        cookie.setPath("/");
+        cookie.setMaxAge(0); // Set cookie to expire immediately
+        response.addCookie(cookie);
+        return ResponseEntity.ok("User logged out successfully!");
     }
 
     // Add a new question to the database (Admin role)

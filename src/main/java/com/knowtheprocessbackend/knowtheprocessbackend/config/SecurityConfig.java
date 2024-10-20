@@ -19,24 +19,31 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 @EnableWebSecurity
 public class SecurityConfig {
 
+    private final JwtRequestFilter jwtRequestFilter;
 
-//    @Bean
-//    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-//        http
-//                .csrf(csrf -> csrf.disable()) // Disable CSRF protection
-//                .authorizeHttpRequests(auth -> {
-//                    auth.requestMatchers("/auth/**").permitAll(); // Allow access to authentication endpoints
-//                    auth.requestMatchers("/admin/**").hasRole("ADMIN"); // Restrict access to admin routes
-//                    auth.anyRequest().authenticated(); // All other requests require authentication
-//                })
-//                .sessionManagement(session -> session
-//                        .sessionCreationPolicy(SessionCreationPolicy.STATELESS) // Stateless session management
-//                );
-//
-//        http.addFilterBefore(jwtRequestFilter, UsernamePasswordAuthenticationFilter.class); // Add JWT filter
-//
-//        return http.build();
-//    }
+    @Autowired
+    public SecurityConfig(JwtRequestFilter jwtRequestFilter) {
+        this.jwtRequestFilter = jwtRequestFilter;
+    }
+
+    @Bean
+    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+        http
+                .csrf(csrf -> csrf.disable()) // Disable CSRF protection
+                .authorizeHttpRequests(auth -> {
+                    auth.requestMatchers("/auth/**").permitAll(); // Allow access to authentication endpoints
+                    auth.requestMatchers("/admin/**").hasRole("ADMIN"); // Restrict access to admin routes
+                    auth.requestMatchers("/resources/**", "/static/**", "/public/**").permitAll(); // Allow static resources
+                    auth.anyRequest().authenticated(); // All other requests require authentication
+                })
+                .sessionManagement(session -> session
+                        .sessionCreationPolicy(SessionCreationPolicy.STATELESS) // Stateless session management
+                );
+
+        http.addFilterBefore(jwtRequestFilter, UsernamePasswordAuthenticationFilter.class); // Add JWT filter before UsernamePasswordAuthenticationFilter
+
+        return http.build();
+    }
 
     @Bean
     public AuthenticationManager authenticationManager(AuthenticationConfiguration authenticationConfiguration) throws Exception {

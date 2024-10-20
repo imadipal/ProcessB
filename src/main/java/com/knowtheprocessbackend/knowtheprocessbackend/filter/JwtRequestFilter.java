@@ -1,7 +1,14 @@
 package com.knowtheprocessbackend.knowtheprocessbackend.filter;
 
 import com.knowtheprocessbackend.knowtheprocessbackend.security.JwtUtil;
+import com.knowtheprocessbackend.knowtheprocessbackend.service.AuthenticationService;
+import jakarta.servlet.FilterChain;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.Cookie;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -14,41 +21,46 @@ import java.io.IOException;
 @Component
 public class JwtRequestFilter extends OncePerRequestFilter {
 
-    private final JwtUtil jwtUtil; // Final, injected in constructor
-    private final UserDetailsService userDetailsService; // Final, injected in constructor
+    @Autowired
+    @Lazy
+    private AuthenticationService authenticationService;
 
     @Autowired
-    public JwtRequestFilter(JwtUtil jwtUtil, UserDetailsService userDetailsService) {
-        this.jwtUtil = jwtUtil; // Inject JwtUtil
-        this.userDetailsService = userDetailsService; // Inject UserDetailsService
-    }
+    @Lazy
+    private UserDetailsService userDetailsService;
+    @Autowired
+    private JwtUtil jwtUtil; // Final, injected in constructor
 
     @Override
-    protected void doFilterInternal(jakarta.servlet.http.HttpServletRequest request, jakarta.servlet.http.HttpServletResponse response, jakarta.servlet.FilterChain filterChain) throws jakarta.servlet.ServletException, IOException {
-        final String authorizationHeader = request.getHeader("Authorization");
-
-        String username = null;
+    protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
+        Cookie[] cookies = request.getCookies();
         String jwt = null;
 
-        if (authorizationHeader != null && authorizationHeader.startsWith("Bearer ")) {
-            jwt = authorizationHeader.substring(7);
+        if (cookies != null) {
+            for (Cookie cookie : cookies) {
+                if ("token".equals(cookie.getName())) {
+                    jwt = cookie.getValue();
+                    break;
+                }
+            }
+        }
+
+        String username = null;
+
+        if (jwt != null) {
             username = jwtUtil.extractUsername(jwt);
         }
 
         if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-            UserDetails userDetails = this.userDetailsService.loadUserByUsername(username);
+            UserDetails userDetails = userDetailsService.loadUserByUsername(username);
             if (jwtUtil.validateToken(jwt, userDetails)) {
-                // Create UsernamePasswordAuthenticationToken using user details
                 UsernamePasswordAuthenticationToken usernamePasswordAuthenticationToken =
                         new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
-
-                // Add additional details (such as request metadata)
                 usernamePasswordAuthenticationToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-
-                // Set the authentication in the SecurityContext
                 SecurityContextHolder.getContext().setAuthentication(usernamePasswordAuthenticationToken);
             }
         }
         filterChain.doFilter(request, response);
     }
+
 }
