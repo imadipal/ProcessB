@@ -66,7 +66,7 @@ public class AuthenticationService implements UserDetailsService {
             // Create a cookie with the JWT token
             Cookie cookie = new Cookie("token", token);
             cookie.setHttpOnly(true); // Prevent JavaScript access to the cookie
-            cookie.setSecure(true); // Only send cookie over HTTPS
+            cookie.setSecure(false); // Only send cookie over HTTPS
             cookie.setPath("/"); // Set cookie path
             cookie.setMaxAge(86400); // Set cookie expiration time (1 day)
 

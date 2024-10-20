@@ -15,6 +15,8 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
+import java.util.List;
+
 @Configuration
 @EnableWebSecurity
 public class SecurityConfig {
@@ -30,6 +32,16 @@ public class SecurityConfig {
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
                 .csrf(csrf -> csrf.disable()) // Disable CSRF protection
+                .cors(cors -> cors
+                        .configurationSource(request -> {
+                            org.springframework.web.cors.CorsConfiguration config = new org.springframework.web.cors.CorsConfiguration();
+                            config.setAllowedOrigins(List.of("https://process-five.vercel.app")); // Specify your frontend domain
+                            config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS")); // Allowed HTTP methods
+                            config.setAllowCredentials(true); // Allow credentials (cookies)
+                            config.setAllowedHeaders(List.of("Authorization", "Content-Type", "X-Requested-With")); // Allowed headers
+                            return config;
+                        })
+                )
                 .authorizeHttpRequests(auth -> {
                     auth.requestMatchers("/auth/**").permitAll(); // Allow access to authentication endpoints
                     auth.requestMatchers("/admin/**").hasRole("ADMIN"); // Restrict access to admin routes
